@@ -1,11 +1,14 @@
 spring:
   application:
     name: E-Queue
-
-  security:
-    oauth2:
-      client:
-        registration:
-          github:
-            client-id: ${GITHUB_CLIENT_ID}
-            client-secret: ${GITHUB_CLIENT_SECRET}
+  data:
+    redis:
+      host: e-queue-redis
+      port: 6379
+security:
+  oauth2:
+    client:
+      registration:
+        github:
+          clientId: ${GITHUB_CLIENT_ID}
+          clientSecret: ${GITHUB_CLIENT_SECRET}

@@ -1,6 +1,16 @@
+version: '3.8'
+
 services:
-  redis:
-    container_name: E-Queue-redis
-    image: redis:7.0-alpine
+  e-queue-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "6379:6379"
+      - "8080:8080"  # Expose the app on port 8080
+    depends_on:
+      - e-queue-redis
+
+  e-queue-redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"  # Expose Redis on port 6379
