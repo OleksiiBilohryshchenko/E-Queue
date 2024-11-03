@@ -1,4 +1,4 @@
-package com.example;
+package com.example.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

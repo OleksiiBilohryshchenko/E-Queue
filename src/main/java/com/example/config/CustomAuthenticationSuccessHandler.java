@@ -1,5 +1,7 @@
-package com.example;
+package com.example.config;
 
+import com.example.User;
+import com.example.repository.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
