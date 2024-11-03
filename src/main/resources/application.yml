@@ -1,10 +1,10 @@
 spring:
   application.name: E-Queue
 
-security:
-  oauth2:
-    client:
-      registration:
-        github:
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
           clientId: ${GITHUB_CLIENT_ID}
           clientSecret: ${GITHUB_CLIENT_SECRET}

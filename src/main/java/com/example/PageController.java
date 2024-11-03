@@ -1,4 +1,4 @@
-package com.controller;
+package com.example;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.util.Map;
-import java.util.Objects;
 
 @RestController
 @RequiredArgsConstructor

@@ -1,7 +1,5 @@
-package com.controller;
+package com.example;
 
-import com.example.BookingSlot;
-import com.example.BookingSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
