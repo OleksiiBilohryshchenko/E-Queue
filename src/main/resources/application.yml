@@ -1,10 +1,6 @@
 spring:
-  application:
-    name: E-Queue
-  data:
-    redis:
-      host: e-queue-redis
-      port: 6379
+  application.name: E-Queue
+
 security:
   oauth2:
     client:
