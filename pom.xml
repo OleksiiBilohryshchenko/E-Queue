@@ -90,6 +90,7 @@
             <artifactId>webjars-locator-core</artifactId>
             <version>0.45</version>
         </dependency>
+
     </dependencies>
 
     <build>
