@@ -25,21 +25,19 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
     public void onAuthenticationSuccess(
             final HttpServletRequest request,
             final HttpServletResponse response,
-            final Authentication authentication
-    ) throws IOException, ServletException {
+            final Authentication authentication) throws IOException {
 
-        final OAuth2User oathUser = (OAuth2User) authentication.getPrincipal();
+        final OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
 
-        final String id = oathUser.getAttribute("id").toString();
-        final String name = oathUser.getAttribute("name").toString();
+        final String id = oauthUser.getAttribute("id").toString();
+        final String name = oauthUser.getAttribute("name") == null ? "Unknown" : oauthUser.getAttribute("name").toString();
 
-        log.info("User with id {} logged in", name, id);
+        log.info("Authenticated oAuth2 user id: {}", id);
 
-        final User user = new User(id,name);
+        final User user = new User(id, name);
         userRepository.save(user);
 
         response.sendRedirect("/");
-
     }
 
 }
