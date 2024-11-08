@@ -1,12 +1,10 @@
 package com.example.controller;
 
-import com.example.BookingSlot;
 import com.example.config.AppProperties;
 import com.example.repository.BookingSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.time.format.DateTimeFormatter;
 
 import java.time.LocalTime;
 import java.util.Comparator;
@@ -27,10 +26,11 @@ import java.util.stream.StreamSupport;
 @RequiredArgsConstructor
 public class BookingController {
 
-    private final BookingSlotRepository bookingSlotRepository;
-    private final StringRedisTemplate stringRedisTemplate;
-    private final RedisTemplate redisTemplate;
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
     private final AppProperties appProperties;
+    private final BookingSlotRepository bookingSlotRepository;
+    private final RedisTemplate<String, String> redisTemplate;
 
 
     @GetMapping("/api/booking/status")
@@ -40,7 +40,9 @@ public class BookingController {
 
         final long secondsSinceMidnight = LocalTime.now().toSecondOfDay();
         final long secondsInCurrentCycle = secondsSinceMidnight % appProperties.getCycleDuration().toSeconds();
+
         final boolean bookingOpen = secondsInCurrentCycle < (secondsForBooking - 5);
+
         final long secondsLeftInCurrentPhase;
 
         if (bookingOpen) {
@@ -55,32 +57,55 @@ public class BookingController {
     }
 
     @GetMapping("/api/booking/slots")
-    public List<BookingSlot> getBookingSlots() {
-        return StreamSupport.stream(bookingSlotRepository.findAll().spliterator(),false)
-                .sorted(Comparator.comparing(BookingSlot::startTime))
+    public List<BookingSlotDto> getBookingSlots() {
+        return StreamSupport.stream(bookingSlotRepository.findAll().spliterator(), false)
+                .map(bookingSlot -> new BookingSlotDto(
+                        bookingSlot.id(),
+                        bookingSlot.startTime().format(TIME_FORMATTER),
+                        bookingSlot.endTime().toString())
+                )
+                .sorted(Comparator.comparing(BookingSlotDto::startTime))
                 .toList();
-
     }
 
     @PostMapping("/api/booking/book")
-    public ResponseEntity<?> bookSlot (@RequestParam String slotId, @AuthenticationPrincipal OAuth2User oAuth2User) {
-        final String userId = oAuth2User.getAttribute("id").toString();
+    public ResponseEntity<?> bookSlot(@RequestParam String slotId, @AuthenticationPrincipal OAuth2User oauthUser) {
+        final String userId = oauthUser.getAttribute("id").toString();
 
-        final Boolean hasBooked =stringRedisTemplate.opsForSet().isMember("booked_users", userId);
-        if (Boolean.TRUE.equals(hasBooked)){
-            log.debug("User {} has already booked a slot", userId);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("User has already booked a slot");
+        // Check if the user has already booked
+        final Boolean hasBooked = redisTemplate.opsForSet().isMember("booked_users", userId);
+        if (Boolean.TRUE.equals(hasBooked)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You have already booked a slot in this window.");
+        }
+        // Add the user to the set of booked users
+        redisTemplate.opsForSet().add("booked_users", userId);
+
+        if (redisTemplate.hasKey("winner:" + userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You have already won a slot.");
         }
 
-        stringRedisTemplate.opsForSet().add("booked_users", userId);
+        // Save the user's selection for the slot
+        final String slotUsersKey = "slot:" + slotId + ":users";
+        redisTemplate.opsForSet().add(slotUsersKey, userId);
 
-        final String slotKey = "slot: " + slotId + " :users";
-        stringRedisTemplate.opsForSet().add(slotKey, userId);
+        log.info("User {} has selected slot {}", userId, slotId);
 
-        log.info("User {} booked slot {}", userId, slotId);
+        return ResponseEntity.ok("Selection received");
+    }
 
-        return ResponseEntity.ok("Selection successful");
+    @GetMapping("/api/booking/winner")
+    public ResponseEntity<?> isWinner(@AuthenticationPrincipal OAuth2User oauthUser) {
+        final String userId = oauthUser.getAttribute("id").toString();
 
+        // Check in Redis if user is a winner
+        final String winnerKey = "winner:" + userId;
+        final String slotId = redisTemplate.opsForValue().get(winnerKey);
+
+        if (slotId != null) {
+            return ResponseEntity.ok(Map.of("slotId", slotId));
+        } else {
+            return ResponseEntity.ok(Map.of());
+        }
     }
 
     @GetMapping("/api/booking/hasBooked")

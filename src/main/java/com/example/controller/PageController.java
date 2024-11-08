@@ -15,12 +15,13 @@ public class PageController {
 
     @GetMapping(value = "/", produces = "text/html")
     public ModelAndView get() {
-        return new ModelAndView("home");
+        return new ModelAndView("home", Map.of());
     }
 
     @GetMapping("/user")
-    public Map<String, Object> user (final @AuthenticationPrincipal OAuth2User principal){
-       return Map.of("name", principal.getAttribute("name"));
+    public Map<String, Object> user(final @AuthenticationPrincipal OAuth2User principal) {
+        final String name = principal.getAttribute("name") == null ? "Unknown" : principal.getAttribute("name");
+        return Map.of("name", name);
     }
 
 }
