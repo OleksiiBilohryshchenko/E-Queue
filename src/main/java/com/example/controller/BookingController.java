@@ -1,9 +1,11 @@
 package com.example.controller;
 
 import com.example.BookingSlot;
+import com.example.config.AppProperties;
 import com.example.repository.BookingSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,8 +16,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.StreamSupport;
 
 @Slf4j
@@ -25,6 +29,30 @@ public class BookingController {
 
     private final BookingSlotRepository bookingSlotRepository;
     private final StringRedisTemplate stringRedisTemplate;
+    private final RedisTemplate redisTemplate;
+    private final AppProperties appProperties;
+
+
+    @GetMapping("/api/booking/status")
+    public BookingWindowStatus getBookingStatus() {
+        final long secondsForBooking = appProperties.getCycleDuration().toSeconds()
+                - appProperties.getBookingRoundDuration().toSeconds();
+
+        final long secondsSinceMidnight = LocalTime.now().toSecondOfDay();
+        final long secondsInCurrentCycle = secondsSinceMidnight % appProperties.getCycleDuration().toSeconds();
+        final boolean bookingOpen = secondsInCurrentCycle < (secondsForBooking - 5);
+        final long secondsLeftInCurrentPhase;
+
+        if (bookingOpen) {
+            secondsLeftInCurrentPhase = secondsForBooking - secondsInCurrentCycle;
+        } else {
+            secondsLeftInCurrentPhase = appProperties.getCycleDuration().toSeconds() - secondsInCurrentCycle;
+        }
+
+        log.debug("Seconds left in current phase: {}. Booking open: {}", secondsLeftInCurrentPhase, bookingOpen);
+
+        return new BookingWindowStatus(bookingOpen, secondsLeftInCurrentPhase);
+    }
 
     @GetMapping("/api/booking/slots")
     public List<BookingSlot> getBookingSlots() {
@@ -55,4 +83,19 @@ public class BookingController {
 
     }
 
+    @GetMapping("/api/booking/hasBooked")
+    public ResponseEntity<?> hasUserBooked(@AuthenticationPrincipal final OAuth2User oauthUser) {
+        final String userId = oauthUser.getAttribute("id").toString();
+
+        final Boolean hasBooked = redisTemplate.opsForSet().isMember("booked_users", userId);
+        final Map<String, Boolean> response = Map.of("hasBooked", Boolean.TRUE.equals(hasBooked));
+        return ResponseEntity.ok(response);
+    }
+
+    public record BookingSlotDto(String id, String startTime, String endTime) { }
+
+    public record BookingWindowStatus(
+            boolean bookingOpen,
+            long secondsLeftInCurrentPhase
+    ) { }
 }
