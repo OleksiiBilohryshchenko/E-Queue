@@ -46,3 +46,20 @@ function loadBookingSlots() {
         }
     });
 }
+
+function submitBooking() {
+    var selectedSlotId = $('#booking-slot').val();
+    $.post("/api/booking/book", {slotId: selectedSlotId}, function (response) {
+        // Disable the booking form since the user has booked
+        $('#booking-form').hide();
+        $('#booking-message').show().text('You have already booked a slot in this window.');
+    }).fail(function (xhr) {
+        if (xhr.status === 403) {
+            // Hide the booking form
+            $('#booking-form').hide();
+            $('#booking-message').show().text('You have already booked a slot in this window.');
+        } else {
+            alert('Booking failed. Please try again.');
+        }
+    });
+}
